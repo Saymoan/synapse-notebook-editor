@@ -1,0 +1,174 @@
+{
+  "name": "synapse-notebook-editor",
+  "displayName": "Azure Synapse Notebook Editor",
+  "description": "Edit, upload and execute Azure Synapse notebooks in VS Code",
+  "version": "0.4.4",
+  "publisher": "RajkumarPalaniyappan",
+  "author": {
+    "name": "Rajkumar Palaniyappan"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/raj-iwt/synapse-notebook-editor"
+  },
+  "bugs": {
+    "url": "https://github.com/raj-iwt/synapse-notebook-editor/issues"
+  },
+  "homepage": "https://github.com/raj-iwt/synapse-notebook-editor#readme",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Notebooks",
+    "Data Science"
+  ],
+  "keywords": [
+    "synapse",
+    "azure",
+    "notebook",
+    "jupyter",
+    "spark",
+    "pyspark",
+    "big data",
+    "data science"
+  ],
+  "galleryBanner": {
+    "color": "#0078D4",
+    "theme": "dark"
+  },
+  "activationEvents": [
+    "onNotebook:synapse-notebook"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "notebookRenderer": [
+      {
+        "id": "synapse-notebook-renderer",
+        "displayName": "Synapse Notebook Renderer",
+        "entrypoint": "./dist/renderer.js",
+        "mimeTypes": [
+          "application/vnd.code.notebook.stdout",
+          "application/vnd.code.notebook.stderr",
+          "text/plain",
+          "text/html"
+        ]
+      }
+    ],
+    "notebooks": [
+      {
+        "type": "synapse-notebook",
+        "displayName": "Azure Synapse Notebook",
+        "selector": [
+          {
+            "filenamePattern": "*.synapse"
+          },
+          {
+            "filenamePattern": "*.ipynb"
+          },
+          {
+            "filenamePattern": "*.json"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
+    "commands": [
+      {
+        "command": "synapse-notebook.createNew",
+        "title": "Synapse: Create New Notebook",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "synapse-notebook.addCodeCell",
+        "title": "Synapse: Add Code Cell",
+        "icon": "$(add)"
+      },
+      {
+        "command": "synapse-notebook.addMarkdownCell",
+        "title": "Synapse: Add Markdown Cell",
+        "icon": "$(add)"
+      },
+      {
+        "command": "synapse-notebook.configureSynapse",
+        "title": "Synapse: Configure Workspace",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "synapse-notebook.manageConfigurations",
+        "title": "Synapse: Manage Configurations",
+        "icon": "$(list-tree)"
+      },
+      {
+        "command": "synapse-notebook.uploadAndExecute",
+        "title": "Synapse: Upload and Execute Notebook",
+        "icon": "$(run-all)"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "synapse-notebook.createNew"
+        },
+        {
+          "command": "synapse-notebook.addCodeCell",
+          "when": "notebookType == 'synapse-notebook'"
+        },
+        {
+          "command": "synapse-notebook.addMarkdownCell",
+          "when": "notebookType == 'synapse-notebook'"
+        },
+        {
+          "command": "synapse-notebook.configureSynapse"
+        },
+        {
+          "command": "synapse-notebook.manageConfigurations"
+        },
+        {
+          "command": "synapse-notebook.uploadAndExecute",
+          "when": "notebookType == 'synapse-notebook'"
+        }
+      ],
+      "notebook/toolbar": [
+        {
+          "command": "synapse-notebook.uploadAndExecute",
+          "when": "notebookType == 'synapse-notebook'",
+          "group": "navigation@1"
+        },
+        {
+          "command": "synapse-notebook.configureSynapse",
+          "when": "notebookType == 'synapse-notebook'",
+          "group": "navigation@2"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "18.x",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.54.0",
+    "typescript": "^5.3.2",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4",
+    "ts-loader": "^9.5.1",
+    "@vscode/test-electron": "^2.3.8"
+  },
+  "dependencies": {
+    "uuid": "^9.0.1",
+    "@azure/identity": "^4.0.0",
+    "axios": "^1.6.0"
+  }
+}

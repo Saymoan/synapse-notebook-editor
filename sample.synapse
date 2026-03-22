@@ -1,0 +1,91 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 2,
+  "metadata": {
+    "language_info": {
+      "name": "python"
+    },
+    "kernelspec": {
+      "name": "synapse_pyspark",
+      "display_name": "Synapse PySpark"
+    },
+    "save_output": true,
+    "synapse_widget": {
+      "version": "0.1",
+      "state": {}
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "# Sample Azure Synapse Notebook\n",
+        "\n",
+        "This is a sample notebook to demonstrate the Synapse Notebook Editor extension."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "# PySpark example\n",
+        "from pyspark.sql import SparkSession\n",
+        "spark = SparkSession.builder.appName(\"SampleApp\").getOrCreate()\n",
+        "\n",
+        "# Create a sample DataFrame\n",
+        "data = [(1, \"Alice\", 34), (2, \"Bob\", 45), (3, \"Charlie\", 29)]\n",
+        "columns = [\"id\", \"name\", \"age\"]\n",
+        "df = spark.createDataFrame(data, columns)\n",
+        "\n",
+        "df.show()"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "%%sql\n",
+        "SELECT * FROM sample_table WHERE age > 30"
+      ],
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## Data Processing\n",
+        "\n",
+        "The following cell demonstrates data transformation:"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "# Filter and transform data\n",
+        "filtered_df = df.filter(df.age > 30)\n",
+        "result = filtered_df.select(\"name\", \"age\").collect()\n",
+        "\n",
+        "for row in result:\n",
+        "    print(f\"Name: {row['name']}, Age: {row['age']}\")"
+      ],
+      "execution_count": null,
+      "outputs": []
+    }
+  ],
+  "bigDataPool": {
+    "referenceName": "sample-spark-pool",
+    "type": "BigDataPool"
+  },
+  "sessionProperties": {
+    "driverMemory": "28g",
+    "driverCores": 4,
+    "executorMemory": "28g",
+    "executorCores": 4,
+    "numExecutors": 2
+  }
+}
