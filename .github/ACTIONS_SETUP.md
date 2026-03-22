@@ -5,14 +5,18 @@ This repository uses GitHub Actions for automated publishing to the VS Code Mark
 ## Workflows
 
 ### 1. CI (`ci.yml`)
+
 Runs on every push and pull request to `main`:
+
 - Installs dependencies
 - Compiles TypeScript
 - Packages extension
 - Uploads VSIX as artifact
 
 ### 2. Publish (`publish.yml`)
+
 Automatically publishes to VS Code Marketplace:
+
 - Triggers on push to `main` or release creation
 - Compiles and packages extension
 - Publishes to marketplace using VSCE_PAT token
@@ -51,6 +55,7 @@ Automatically publishes to VS Code Marketplace:
 ### 3. Verify Setup
 
 Push a commit to `main` branch:
+
 ```bash
 git add .github/
 git commit -m "Add GitHub Actions workflows"
@@ -62,6 +67,7 @@ Check the **Actions** tab in your repository to see workflows running.
 ## Manual Trigger
 
 You can manually trigger the publish workflow:
+
 1. Go to **Actions** tab
 2. Select **Publish Extension**
 3. Click **Run workflow**
@@ -70,6 +76,7 @@ You can manually trigger the publish workflow:
 ## What Happens on Push
 
 When you push to `main`:
+
 1. **CI workflow** runs tests and validates build
 2. **Publish workflow** automatically publishes to marketplace
 3. Extension version in `package.json` must be updated for each publish
@@ -77,9 +84,10 @@ When you push to `main`:
 ## Version Management
 
 Before pushing to `main`, always update version in `package.json`:
+
 ```json
 {
-  "version": "0.4.5"  // Increment this
+  "version": "0.4.5" // Increment this
 }
 ```
 
@@ -94,15 +102,18 @@ Also update `CHANGELOG.md` with changes.
 ## Troubleshooting
 
 ### "Extension already exists at this version"
+
 - Update version number in `package.json`
 - Commit and push again
 
 ### "Failed to publish: Unauthorized"
+
 - Check that `VSCE_PAT` secret is set correctly
 - Verify PAT hasn't expired
 - Ensure PAT has correct marketplace permissions
 
 ### Workflow doesn't run
+
 - Check that workflows are enabled in repository settings
 - Verify `.yml` files are in `.github/workflows/` directory
 - Check Actions tab for error messages

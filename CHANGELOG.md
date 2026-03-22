@@ -2,6 +2,29 @@
 
 All notable changes to the "synapse-notebook-editor" extension will be documented in this file.
 
+## [0.4.5] - 2026-03-22
+
+### Added
+
+- 🚀 **GitHub Actions CI/CD**: Automated publishing to VS Code Marketplace
+- ✅ **CI Workflow**: Automatic build and test on every push/PR
+- 📦 **Publish Workflow**: Auto-publish to marketplace on main branch push
+- 📚 **Setup Documentation**: Complete guide for PAT configuration
+- 🎯 **Artifact Uploads**: VSIX files automatically uploaded after builds
+
+### DevOps
+
+- Automated extension publishing on version updates
+- Build validation on pull requests
+- Manual workflow trigger capability
+- 30-day artifact retention for VSIX packages
+
+### Repository
+
+- Now hosted on GitHub: https://github.com/raj-iwt/synapse-notebook-editor
+- Public repository with MIT license
+- Automated release process configured
+
 ## [0.4.4] - 2026-03-22
 
 ### Fixed

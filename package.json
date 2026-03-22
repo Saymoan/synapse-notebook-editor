@@ -2,7 +2,7 @@
   "name": "synapse-notebook-editor",
   "displayName": "Azure Synapse Notebook Editor",
   "description": "Edit, upload and execute Azure Synapse notebooks in VS Code",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "publisher": "RajkumarPalaniyappan",
   "author": {
     "name": "Rajkumar Palaniyappan"

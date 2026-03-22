@@ -5,9 +5,9 @@ on:
     branches:
       - main
     paths-ignore:
-      - '**.md'
-      - '.vscode/**'
-      - '.gitignore'
+      - "**.md"
+      - ".vscode/**"
+      - ".gitignore"
   release:
     types: [published]
   workflow_dispatch:
@@ -22,8 +22,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
+          node-version: "18"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
@@ -47,5 +47,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: synapse-notebook-editor-${{ github.sha }}
-          path: '*.vsix'
+          path: "*.vsix"
           retention-days: 30
