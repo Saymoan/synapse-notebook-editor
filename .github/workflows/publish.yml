@@ -1,0 +1,51 @@
+name: Publish Extension
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - '.vscode/**'
+      - '.gitignore'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compile
+        run: npm run compile
+
+      - name: Package extension
+        run: npm run package
+
+      - name: Install vsce
+        run: npm install -g @vscode/vsce
+
+      - name: Publish to VS Code Marketplace
+        if: success() && github.ref == 'refs/heads/main'
+        run: vsce publish --no-dependencies
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Upload VSIX as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: synapse-notebook-editor-${{ github.sha }}
+          path: '*.vsix'
+          retention-days: 30
