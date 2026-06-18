@@ -8,6 +8,7 @@ export class SynapseExecutionManager {
     private workspaceStatusBar: vscode.StatusBarItem;
     private executionStatusBar: vscode.StatusBarItem;
     private controller: vscode.NotebookController;
+    private inFlight = false;
 
     constructor(private context: vscode.ExtensionContext) {
         this.outputChannel = vscode.window.createOutputChannel('Synapse Notebook');
@@ -171,6 +172,11 @@ export class SynapseExecutionManager {
         _notebook: vscode.NotebookDocument,
         controller: vscode.NotebookController
     ): Promise<void> {
+        if (this.inFlight) {
+            vscode.window.showWarningMessage('A notebook is already running. Please wait for it to finish.');
+            return;
+        }
+
         if (!await this.ensureClient()) {
             return;
         }
@@ -192,16 +198,24 @@ export class SynapseExecutionManager {
         this.outputChannel.appendLine(`Executing ${codeCells.length} cell(s) via Livy on pool "${poolName}"`);
         this.outputChannel.appendLine('═'.repeat(60));
 
+        this.inFlight = true;
         this.updateStatusBar('$(sync~spin) Starting Spark session...', true);
 
         let sessionId: number | undefined;
         let executionOrder = 1;
 
         try {
-            sessionId = await this.client!.createSession(poolName);
-            this.outputChannel.appendLine(`Session ${sessionId} created — waiting for idle state...`);
+            // Use a progress notification for session startup so the user can cancel it
+            await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: `Starting Spark session on pool "${poolName}"...`,
+                cancellable: true
+            }, async (_progress, startupToken) => {
+                sessionId = await this.client!.createSession(poolName);
+                this.outputChannel.appendLine(`Session ${sessionId} created — waiting for idle state...`);
+                await this.client!.waitForSessionIdle(poolName, sessionId, startupToken);
+            });
 
-            await this.client!.waitForSessionIdle(poolName, sessionId);
             this.outputChannel.appendLine(`Session ${sessionId} is idle.`);
             this.updateStatusBar('$(sync~spin) Running...', true);
 
@@ -212,17 +226,17 @@ export class SynapseExecutionManager {
 
                 if (execution.token.isCancellationRequested) {
                     execution.end(false, Date.now());
+                    this.updateStatusBar('$(debug-stop) Cancelled', false);
                     break;
                 }
 
                 let cellSuccess = false;
                 try {
-                    const source = cell.document.getText();
-                    const kind = detectStatementKind(source);
+                    const { kind, code } = prepareStatement(cell.document.getText());
 
-                    const stmtId = await this.client!.submitStatement(poolName, sessionId, source, kind);
+                    const stmtId = await this.client!.submitStatement(poolName, sessionId!, code, kind);
                     const output = await this.client!.waitForStatement(
-                        poolName, sessionId, stmtId, execution.token
+                        poolName, sessionId!, stmtId, execution.token
                     );
 
                     await execution.replaceOutput([buildCellOutput(output)]);
@@ -232,7 +246,10 @@ export class SynapseExecutionManager {
                         this.outputChannel.appendLine(`Cell error: ${output.evalue}`);
                     }
                 } catch (err) {
-                    if (!execution.token.isCancellationRequested) {
+                    if (execution.token.isCancellationRequested) {
+                        execution.end(false, Date.now());
+                        this.updateStatusBar('$(debug-stop) Cancelled', false);
+                    } else {
                         const msg = err instanceof Error ? err.message : String(err);
                         await execution.replaceOutput([
                             new vscode.NotebookCellOutput([
@@ -240,8 +257,8 @@ export class SynapseExecutionManager {
                             ])
                         ]);
                         this.outputChannel.appendLine(`Error: ${msg}`);
+                        execution.end(false, Date.now());
                     }
-                    execution.end(false, Date.now());
                     return; // fall through to finally; don't execute remaining cells
                 }
 
@@ -264,6 +281,7 @@ export class SynapseExecutionManager {
                 this.updateStatusBar('$(debug-stop) Cancelled', false);
             }
         } finally {
+            this.inFlight = false;
             if (sessionId !== undefined) {
                 this.outputChannel.appendLine(`\nClosing session ${sessionId}...`);
                 await this.client!.closeSession(poolName, sessionId);
@@ -289,12 +307,16 @@ export class SynapseExecutionManager {
     }
 }
 
-function detectStatementKind(source: string): LivyStatementKind {
-    const firstLine = source.trimStart().split('\n')[0];
-    if (/^%%sql\b/.test(firstLine)) { return 'sql'; }
-    if (/^%%scala\b/.test(firstLine)) { return 'spark'; }
-    if (/^%%sparkr\b/.test(firstLine)) { return 'sparkr'; }
-    return 'pyspark';
+function prepareStatement(source: string): { kind: LivyStatementKind; code: string } {
+    const trimmed = source.trimStart();
+    const newlineIdx = trimmed.indexOf('\n');
+    const firstLine = newlineIdx >= 0 ? trimmed.slice(0, newlineIdx) : trimmed;
+    const rest = newlineIdx >= 0 ? trimmed.slice(newlineIdx + 1) : '';
+
+    if (/^%%sql\b/.test(firstLine)) { return { kind: 'sql', code: rest }; }
+    if (/^%%scala\b/.test(firstLine)) { return { kind: 'spark', code: rest }; }
+    if (/^%%sparkr\b/.test(firstLine)) { return { kind: 'sparkr', code: rest }; }
+    return { kind: 'pyspark', code: source };
 }
 
 function buildCellOutput(output: LivyStatementOutput): vscode.NotebookCellOutput {

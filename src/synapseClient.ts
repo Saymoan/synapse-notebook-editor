@@ -37,6 +37,18 @@ export class SynapseClient {
             baseURL: baseUrl,
             headers: { 'Content-Type': 'application/json' }
         });
+
+        // Transparently re-authenticate on 401 (Azure tokens expire after ~1 hour)
+        this.httpClient.interceptors.response.use(undefined, async (error) => {
+            if (error.response?.status === 401 && !error.config._retry) {
+                error.config._retry = true;
+                await this.authenticate();
+                error.config.headers['Authorization'] =
+                    this.httpClient.defaults.headers.common['Authorization'];
+                return this.httpClient(error.config);
+            }
+            return Promise.reject(error);
+        });
     }
 
     async authenticate(): Promise<boolean> {
@@ -76,7 +88,7 @@ export class SynapseClient {
         sessionId: number,
         token?: vscode.CancellationToken
     ): Promise<void> {
-        const terminalStates: LivySessionState[] = ['error', 'dead', 'killed'];
+        const terminalStates: LivySessionState[] = ['error', 'dead', 'killed', 'success'];
         const maxPolls = 200; // 10 minutes at 3 s intervals
 
         for (let i = 0; i < maxPolls; i++) {
