@@ -1,5 +1,14 @@
 import * as vscode from 'vscode';
-import { SynapseNotebook, SynapseCell, SynapseCellOutput } from './synapseNotebookTypes';
+import { SynapseNotebook, SynapseNotebookResource, SynapseCell, SynapseCellOutput } from './synapseNotebookTypes';
+
+interface GitEnvelope {
+    name: string;
+    gitOnlyFields: {
+        targetSparkConfiguration?: { referenceName: string; type: string } | null;
+        description?: string;
+        folder?: { name: string };
+    };
+}
 
 /**
  * Serializer for Azure Synapse notebooks
@@ -15,40 +24,43 @@ export class SynapseNotebookSerializer implements vscode.NotebookSerializer {
         _token: vscode.CancellationToken
     ): Promise<vscode.NotebookData> {
         const contents = new TextDecoder().decode(content);
-        
-        let raw: SynapseNotebook;
+
+        let parsed: any;
         try {
-            raw = JSON.parse(contents);
-            
-            // Validate that this is actually a notebook
-            if (!raw.cells || !Array.isArray(raw.cells)) {
-                throw new Error('Invalid notebook format: missing cells array');
-            }
-        } catch (error) {
-            // Return empty notebook if parsing fails
-            raw = {
-                nbformat: 4,
-                nbformat_minor: 2,
-                metadata: {},
-                cells: []
-            };
+            parsed = JSON.parse(contents);
+        } catch {
+            parsed = null;
         }
 
-        // Convert Synapse cells to VS Code cells
+        let raw: SynapseNotebook;
+        let gitFormat: GitEnvelope | null = null;
+
+        if (this.isGitFormat(parsed)) {
+            const { name, properties } = parsed;
+            const { targetSparkConfiguration, description, folder, ...notebookPart } = properties;
+            raw = notebookPart as SynapseNotebook;
+            gitFormat = { name, gitOnlyFields: { targetSparkConfiguration, description, folder } };
+        } else if (parsed && Array.isArray(parsed.cells)) {
+            raw = parsed as SynapseNotebook;
+        } else {
+            raw = { nbformat: 4, nbformat_minor: 2, metadata: {}, cells: [] };
+        }
+
         const cells = raw.cells.map(cell => this.convertToNotebookCell(cell));
 
-        // Store Synapse-specific metadata
-        const notebookMetadata = {
+        const notebookData = new vscode.NotebookData(cells);
+        notebookData.metadata = {
             custom: {
                 metadata: raw.metadata,
                 nbformat: raw.nbformat,
                 nbformat_minor: raw.nbformat_minor,
                 bigDataPool: raw.bigDataPool,
-                sessionProperties: raw.sessionProperties
+                sessionProperties: raw.sessionProperties,
+                gitFormat,
             }
         };
 
-        return new vscode.NotebookData(cells);
+        return notebookData;
     }
 
     /**
@@ -83,7 +95,6 @@ export class SynapseNotebookSerializer implements vscode.NotebookSerializer {
             cells: cells
         };
 
-        // Add optional Synapse-specific properties if they exist
         if ((data.metadata as any)?.custom?.bigDataPool) {
             synapseNotebook.bigDataPool = (data.metadata as any).custom.bigDataPool;
         }
@@ -92,7 +103,23 @@ export class SynapseNotebookSerializer implements vscode.NotebookSerializer {
             synapseNotebook.sessionProperties = (data.metadata as any).custom.sessionProperties;
         }
 
-        const contents = JSON.stringify(synapseNotebook, null, 2);
+        const gitFormat: GitEnvelope | null = (data.metadata as any)?.custom?.gitFormat ?? null;
+        let output: object;
+
+        if (gitFormat) {
+            const { name, gitOnlyFields } = gitFormat;
+            const properties: any = { ...synapseNotebook };
+            properties.targetSparkConfiguration = gitOnlyFields.targetSparkConfiguration ?? null;
+            properties.description = gitOnlyFields.description ?? '';
+            if (gitOnlyFields.folder !== undefined) {
+                properties.folder = gitOnlyFields.folder;
+            }
+            output = { name, properties };
+        } else {
+            output = synapseNotebook;
+        }
+
+        const contents = JSON.stringify(output, null, 2);
         return new TextEncoder().encode(contents);
     }
 
@@ -233,6 +260,17 @@ export class SynapseNotebookSerializer implements vscode.NotebookSerializer {
         };
     }
 
+    private isGitFormat(raw: any): raw is SynapseNotebookResource {
+        return (
+            raw !== null &&
+            typeof raw === 'object' &&
+            typeof raw.name === 'string' &&
+            typeof raw.properties === 'object' &&
+            raw.properties !== null &&
+            Array.isArray(raw.properties.cells)
+        );
+    }
+
     /**
      * Detect language from cell content or metadata
      */
@@ -254,8 +292,7 @@ export class SynapseNotebookSerializer implements vscode.NotebookSerializer {
             }
         }
 
-        // Default to Python for Synapse
-        return metadata?.language || 'python';
+        return metadata?.microsoft?.language || metadata?.language || 'python';
     }
 
     /**

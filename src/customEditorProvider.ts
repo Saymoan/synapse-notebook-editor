@@ -94,13 +94,23 @@ export class SynapseNotebookCustomEditorProvider implements vscode.CustomTextEdi
             const text = new TextDecoder().decode(content);
             const json = JSON.parse(text);
             
-            // Check for required notebook properties
-            return (
-                typeof json === 'object' &&
-                json !== null &&
+            if (typeof json !== 'object' || json === null) {
+                return false;
+            }
+
+            // Direct format: cells array at root level
+            const hasCellsAtRoot =
                 ('nbformat' in json || 'cells' in json) &&
-                Array.isArray(json.cells)
-            );
+                Array.isArray(json.cells);
+
+            // Git export format: { name, properties: { cells: [...] } }
+            const hasCellsInProperties =
+                typeof json.properties === 'object' &&
+                json.properties !== null &&
+                Array.isArray(json.properties.cells) &&
+                typeof json.name === 'string';
+
+            return hasCellsAtRoot || hasCellsInProperties;
         } catch {
             return false;
         }

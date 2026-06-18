@@ -71,7 +71,22 @@ export interface SynapseCellMetadata {
             deleting?: boolean;
         };
     };
+    microsoft?: {
+        language?: string;
+    };
     [key: string]: any;
+}
+
+export interface SynapseNotebookResource {
+    name: string;
+    properties: SynapseNotebook & {
+        targetSparkConfiguration?: { referenceName: string; type: string } | null;
+        description?: string;
+        folder?: { name: string };
+    };
+    id?: string;
+    type?: string;
+    etag?: string;
 }
 
 export interface SynapseCellOutput {
